@@ -31,10 +31,10 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
           tooltip: 'Browse File',
           onPressed: onBrowseTap,
         ),
-        // QR Code Icon
+        // Barcode Scanner Icon
         IconButton(
           icon: const Icon(Icons.qr_code_scanner),
-          tooltip: 'Scan QR Code',
+          tooltip: 'Scan Barcode',
           onPressed: onQrCodeTap,
         ),
         // More Options Icon

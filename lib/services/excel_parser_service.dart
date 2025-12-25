@@ -60,7 +60,7 @@ class ExcelParserService {
             carrier: carrier,
             trackingNumber: trackingNumber,
             removalOrderType: removalOrderType,
-            status: 'pending',
+            status: 'not scanned',
             orderStatus: 'pending',
             lastUpdated: DateTime.now().toIso8601String(),
           );

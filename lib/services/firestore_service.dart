@@ -108,5 +108,21 @@ class FirestoreService {
       throw Exception('Failed to delete shipment: $e');
     }
   }
+
+  /// Update status for a shipment by tracking number
+  Future<void> updateShipmentStatus(
+      String trackingNumber, String status) async {
+    try {
+      await _firestore
+          .collection(_collectionName)
+          .doc(trackingNumber)
+          .update({
+        'status': status,
+        'last_updated': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update shipment status: $e');
+    }
+  }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/tracking_item.dart';
+import '../utils/status_calculator.dart';
 
 class TrackingCard extends StatelessWidget {
   final TrackingItem item;
@@ -44,6 +45,7 @@ class TrackingCard extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.qr_code_scanner),
+                tooltip: 'Scan Barcode',
                 onPressed: onQrCodeTap,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -98,11 +100,11 @@ class TrackingCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    item.shippedStatus,
-                    style: const TextStyle(
+                    _formatStatusText(item.shippedStatus),
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.orange,
+                      color: StatusCalculator.getStatusColor(item.shippedStatus),
                     ),
                   ),
                 ],
@@ -148,6 +150,26 @@ class TrackingCard extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// Format status text for display
+  String _formatStatusText(String status) {
+    if (status.isEmpty) {
+      return 'Not Scanned';
+    }
+    
+    // Capitalize first letter and handle hyphenated words
+    final lowerStatus = status.toLowerCase();
+    if (lowerStatus == 'on-time') {
+      return 'On-Time';
+    } else if (lowerStatus == 'not scanned') {
+      return 'Not Scanned';
+    } else if (lowerStatus == 'late') {
+      return 'Late';
+    }
+    
+    // Default: capitalize first letter
+    return status[0].toUpperCase() + status.substring(1);
   }
 }
 

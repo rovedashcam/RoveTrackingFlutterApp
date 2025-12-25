@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/tracking_item.dart';
 import '../repositories/shipment_repository.dart';
+import 'scanner_screen.dart';
 import '../widgets/app_header.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/tracking_card.dart';
@@ -20,7 +21,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   
   List<TrackingItem> _allTrackingItems = [];
   List<TrackingItem> _filteredTrackingItems = [];
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -36,34 +37,34 @@ class _TrackingScreenState extends State<TrackingScreen> {
     super.dispose();
   }
 
-  /// Load shipments from Firestore
-  Future<void> _loadShipments() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final shipments = await _repository.getAllShipments();
-      setState(() {
-        _allTrackingItems = shipments
-            .map((shipment) => shipment.toTrackingItem())
-            .toList();
-        _filteredTrackingItems = _allTrackingItems;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading shipments: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  /// Load shipments from Firestore using stream for real-time updates
+  void _loadShipments() {
+    _repository.getShipmentsStream().listen(
+      (shipments) {
+        if (mounted) {
+          setState(() {
+            _allTrackingItems = shipments
+                .map((shipment) => shipment.toTrackingItem())
+                .toList();
+            _onSearchChanged(); // Re-filter after new data
+            _isLoading = false;
+          });
+        }
+      },
+      onError: (error) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error loading shipments: $error'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+    );
   }
 
   void _onSearchChanged() {
@@ -150,13 +151,110 @@ class _TrackingScreenState extends State<TrackingScreen> {
     }
   }
 
-  void _handleQrCodeScan() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('QR Code scanner will be implemented here'),
-        duration: Duration(seconds: 2),
+  /// Handle barcode scan - open scanner screen
+  void _handleQrCodeScan() async {
+    // Open scanner screen
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ScannerScreen(
+          onScanResult: (trackingNumber) {
+            // Process the scanned tracking number
+            _processScannedTrackingNumber(trackingNumber);
+          },
+        ),
       ),
     );
+  }
+
+  /// Process scanned tracking number and update status
+  Future<void> _processScannedTrackingNumber(String trackingNumber) async {
+    final trimmedTrackingNumber = trackingNumber.trim();
+    
+    // Show loading dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    try {
+      // Step 1: Find the item from the displayed list to verify it exists
+      final foundInList = _allTrackingItems.any(
+        (item) => item.trackingNumber == trimmedTrackingNumber,
+      );
+      
+      if (!foundInList) {
+        throw Exception('Tracking number not found in displayed list: $trimmedTrackingNumber');
+      }
+
+      // Step 2: Get the full shipment entity from Firestore to get original shipment date
+      final shipment = await _repository.getShipmentByTrackingNumber(trimmedTrackingNumber);
+      
+      if (shipment == null) {
+        throw Exception('Tracking number not found in Firestore: $trimmedTrackingNumber');
+      }
+
+      // Step 3: Calculate status based on shipment date compared to today
+      // The updateStatusByTrackingNumber method will:
+      // - Get the shipment from Firestore (we already have it, but the method does it again)
+      // - Calculate status using StatusCalculator.calculateStatus(shipment.shipmentDate)
+      // - Update Firestore with the new status
+      final newStatus = await _repository.updateStatusByTrackingNumber(trimmedTrackingNumber);
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (newStatus.success) {
+        // The stream will automatically update the UI, but we can also reload to be sure
+        // The Firestore stream should handle the update automatically
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Tracking ${newStatus.trackingNumber}: Status updated to ${newStatus.newStatus}',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(newStatus.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error processing scan: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   void _handleMoreOptions() {

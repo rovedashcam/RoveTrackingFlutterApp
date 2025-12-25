@@ -2,6 +2,7 @@ import 'dart:io';
 import '../models/amazon_shipment_entity.dart';
 import '../services/excel_parser_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/status_calculator.dart';
 
 /// Shipment Repository
 /// Business logic layer that coordinates between services
@@ -89,6 +90,61 @@ class ShipmentRepository {
   Future<void> deleteShipment(String trackingNumber) async {
     await _firestoreService.deleteShipment(trackingNumber);
   }
+
+  /// Update shipment status by scanning tracking number
+  /// Calculates status based on shipment date and updates in Firestore
+  Future<StatusUpdateResult> updateStatusByTrackingNumber(
+      String trackingNumber) async {
+    try {
+      // Get shipment from Firestore
+      final shipment = await _firestoreService.getShipmentByTrackingNumber(
+        trackingNumber,
+      );
+
+      if (shipment == null) {
+        return StatusUpdateResult(
+          success: false,
+          message: 'Tracking number not found: $trackingNumber',
+        );
+      }
+
+      // Calculate status based on shipment date
+      final newStatus = StatusCalculator.calculateStatus(shipment.shipmentDate);
+
+      // Update status in Firestore
+      await _firestoreService.updateShipmentStatus(
+        trackingNumber,
+        newStatus,
+      );
+
+      return StatusUpdateResult(
+        success: true,
+        message: 'Status updated to: $newStatus',
+        trackingNumber: trackingNumber,
+        newStatus: newStatus,
+      );
+    } catch (e) {
+      return StatusUpdateResult(
+        success: false,
+        message: 'Failed to update status: $e',
+      );
+    }
+  }
+}
+
+/// Result of status update operation
+class StatusUpdateResult {
+  final bool success;
+  final String message;
+  final String? trackingNumber;
+  final String? newStatus;
+
+  StatusUpdateResult({
+    required this.success,
+    required this.message,
+    this.trackingNumber,
+    this.newStatus,
+  });
 }
 
 /// Result of import operation

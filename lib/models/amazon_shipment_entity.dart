@@ -1,4 +1,5 @@
 import 'tracking_item.dart';
+import '../utils/date_formatter.dart';
 
 /// Interface for displayable items
 abstract class DisplayableItem {}
@@ -133,8 +134,8 @@ class AmazonShipmentEntity implements DisplayableItem {
       orderId: orderId,
       sku: sku,
       quantity: double.tryParse(shipmentQuantity) ?? 0.0,
-      requestDate: requestDate,
-      shipmentDate: shipmentDate,
+      requestDate: DateFormatter.formatDate(requestDate),
+      shipmentDate: DateFormatter.formatDate(shipmentDate),
       carrier: carrier,
       shippedStatus: status.isNotEmpty ? status : 'not scanned',
     );
