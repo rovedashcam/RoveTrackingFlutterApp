@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/tracking_item.dart';
+import '../repositories/shipment_repository.dart';
 import '../widgets/app_header.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/tracking_card.dart';
@@ -13,37 +15,18 @@ class TrackingScreen extends StatefulWidget {
 }
 
 class _TrackingScreenState extends State<TrackingScreen> {
-  final List<TrackingItem> _allTrackingItems = [
-    TrackingItem(
-      trackingNumber: '1ZA8339B0316120433',
-      orderId: 'g2pBsiQ/pc',
-      sku: 'R3HWKNEWFNSKU: X003BJP4E5',
-      quantity: 23.0,
-      requestDate: '09-Oct-2025',
-      shipmentDate: '14-Oct-2025',
-      carrier: 'UPS GR PL',
-      shippedStatus: 'not scanned',
-    ),
-    TrackingItem(
-      trackingNumber: '1ZA8G9240309593168',
-      orderId: 'g2pBsiQ/pc',
-      sku: 'R2-4K-DUAL-NFNSKU: X0049RSXGJ EW',
-      quantity: 20.0,
-      requestDate: '09-Oct-2025',
-      shipmentDate: '14-Oct-2025',
-      carrier: 'UPS_GR_PL',
-      shippedStatus: 'not scanned',
-    ),
-  ];
-
-  List<TrackingItem> _filteredTrackingItems = [];
+  final ShipmentRepository _repository = ShipmentRepository();
   final TextEditingController _searchController = TextEditingController();
+  
+  List<TrackingItem> _allTrackingItems = [];
+  List<TrackingItem> _filteredTrackingItems = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _filteredTrackingItems = _allTrackingItems;
     _searchController.addListener(_onSearchChanged);
+    _loadShipments();
   }
 
   @override
@@ -51,6 +34,36 @@ class _TrackingScreenState extends State<TrackingScreen> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Load shipments from Firestore
+  Future<void> _loadShipments() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final shipments = await _repository.getAllShipments();
+      setState(() {
+        _allTrackingItems = shipments
+            .map((shipment) => shipment.toTrackingItem())
+            .toList();
+        _filteredTrackingItems = _allTrackingItems;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading shipments: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _onSearchChanged() {
@@ -68,22 +81,61 @@ class _TrackingScreenState extends State<TrackingScreen> {
     });
   }
 
+  /// Handle Excel file import
   Future<void> _handleBrowseFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
         allowMultiple: false,
       );
 
-      if (result != null) {
-        // File selected
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        
+        // Show loading dialog
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('File selected: ${result.files.single.name}'),
-              duration: const Duration(seconds: 2),
-            ),
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const ImportProgressDialog(),
           );
+        }
+
+        try {
+          // Import shipments from Excel
+          final importResult = await _repository.importShipmentsFromExcel(file);
+
+          // Close loading dialog
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+
+          // Show result dialog
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => ImportResultDialog(
+                result: importResult,
+                onReload: _loadShipments,
+              ),
+            );
+          }
+        } catch (e) {
+          // Close loading dialog
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error importing file: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
         }
       }
     } catch (e) {
@@ -175,28 +227,32 @@ class _TrackingScreenState extends State<TrackingScreen> {
             },
           ),
           Expanded(
-            child: _filteredTrackingItems.isEmpty
+            child: _isLoading
                 ? const Center(
-                    child: Text(
-                      'No tracking items found',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
+                    child: CircularProgressIndicator(),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    itemCount: _filteredTrackingItems.length,
-                    itemBuilder: (context, index) {
-                      final item = _filteredTrackingItems[index];
-                      return TrackingCard(
-                        item: item,
-                        onViewDetailsTap: () => _handleViewDetails(item),
-                        onQrCodeTap: _handleQrCodeScan,
-                      );
-                    },
-                  ),
+                : _filteredTrackingItems.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No tracking items found',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        itemCount: _filteredTrackingItems.length,
+                        itemBuilder: (context, index) {
+                          final item = _filteredTrackingItems[index];
+                          return TrackingCard(
+                            item: item,
+                            onViewDetailsTap: () => _handleViewDetails(item),
+                            onQrCodeTap: _handleQrCodeScan,
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -204,3 +260,89 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 }
 
+/// Dialog showing import progress
+class ImportProgressDialog extends StatelessWidget {
+  const ImportProgressDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            const Text(
+              'Importing shipments...',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dialog showing import result
+class ImportResultDialog extends StatelessWidget {
+  final ImportResult result;
+  final VoidCallback onReload;
+
+  const ImportResultDialog({
+    super.key,
+    required this.result,
+    required this.onReload,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        result.success ? 'Import Successful' : 'Import Failed',
+        style: TextStyle(
+          color: result.success ? Colors.green : Colors.red,
+        ),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              result.message,
+              style: const TextStyle(fontSize: 14),
+            ),
+            if (result.success) ...[
+              const SizedBox(height: 16),
+              Text('Total rows: ${result.totalRows}'),
+              Text('Unique shipments: ${result.uniqueShipments}'),
+              Text('New shipments: ${result.newShipments}'),
+              Text('Duplicates skipped: ${result.duplicatesSkipped}'),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+            if (result.success) {
+              onReload();
+            }
+          },
+          child: const Text('OK'),
+        ),
+      ],
+    );
+  }
+}

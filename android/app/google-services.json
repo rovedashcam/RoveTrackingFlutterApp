@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "719454456615",
+    "project_id": "rovereturntrackingapp",
+    "storage_bucket": "rovereturntrackingapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:719454456615:android:ced7825df112dfac043702",
+        "android_client_info": {
+          "package_name": "com.android.rove.trackingapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCW7EP0EC_7g1qIHs8tV8gPKZKqM0RCi3I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
