@@ -15,6 +15,14 @@ enum SortType {
   shipmentDate,
 }
 
+/// Filter type enum
+enum FilterType {
+  all,
+  late,
+  onTime,
+  notScanned,
+}
+
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
 
@@ -30,6 +38,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   List<TrackingItem> _filteredTrackingItems = [];
   bool _isLoading = true;
   SortType _currentSortType = SortType.shipmentDate; // Default to shipment date
+  FilterType _currentFilterType = FilterType.all; // Default to all items
 
   @override
   void initState() {
@@ -118,30 +127,47 @@ class _TrackingScreenState extends State<TrackingScreen> {
     // Update both lists in a single setState
     setState(() {
       _allTrackingItems = sortedList;
-      // Update filtered list based on current search
-      final query = _searchController.text.toLowerCase().trim();
-      if (query.isEmpty) {
-        _filteredTrackingItems = List<TrackingItem>.from(_allTrackingItems);
-      } else {
-        _filteredTrackingItems = _allTrackingItems.where((item) {
-          // Search by tracking number, order ID, or product name
-          return item.trackingNumber.toLowerCase().contains(query) ||
-              item.orderId.toLowerCase().contains(query) ||
-              item.productName.toLowerCase().contains(query);
-        }).toList();
-      }
+      // Apply filters after sorting
+      _applyFilters();
     });
   }
 
   void _onSearchChanged() {
     if (!mounted) return;
-    final query = _searchController.text.toLowerCase();
+    _applyFilters();
+  }
+
+  /// Apply both search and status filters
+  void _applyFilters() {
+    if (!mounted) return;
+    
+    final query = _searchController.text.toLowerCase().trim();
+    
     setState(() {
+      // First apply status filter
+      List<TrackingItem> statusFiltered = _allTrackingItems;
+      
+      if (_currentFilterType != FilterType.all) {
+        statusFiltered = _allTrackingItems.where((item) {
+          final status = item.shippedStatus.toLowerCase();
+          switch (_currentFilterType) {
+            case FilterType.late:
+              return status == 'late';
+            case FilterType.onTime:
+              return status == 'on-time';
+            case FilterType.notScanned:
+              return status == 'not scanned' || status.isEmpty;
+            case FilterType.all:
+              return true;
+          }
+        }).toList();
+      }
+      
+      // Then apply search filter
       if (query.isEmpty) {
-        // Create a new list copy to ensure UI updates
-        _filteredTrackingItems = List<TrackingItem>.from(_allTrackingItems);
+        _filteredTrackingItems = List<TrackingItem>.from(statusFiltered);
       } else {
-        _filteredTrackingItems = _allTrackingItems.where((item) {
+        _filteredTrackingItems = statusFiltered.where((item) {
           // Search by tracking number, order ID, or product name
           return item.trackingNumber.toLowerCase().contains(query) ||
               item.orderId.toLowerCase().contains(query) ||
@@ -326,6 +352,119 @@ class _TrackingScreenState extends State<TrackingScreen> {
     }
   }
 
+  /// Handle filter button tap - show filter popup menu
+  void _handleFilterTap() {
+    // Get the RenderBox of the search bar to position the menu
+    final RenderBox? overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final RenderBox? searchBarBox = context.findRenderObject() as RenderBox?;
+    
+    if (overlay == null || searchBarBox == null) return;
+    
+    // Calculate position - show menu below the filter icon
+    final Size screenSize = MediaQuery.of(context).size;
+    final double appBarHeight = kToolbarHeight;
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double searchBarHeight = 60.0; // Approximate search bar height
+    final double menuWidth = 200.0;
+    
+    final RelativeRect position = RelativeRect.fromLTRB(
+      screenSize.width - menuWidth - 16, // Left: align to right side
+      appBarHeight + statusBarHeight + searchBarHeight, // Top: below search bar
+      16, // Right margin
+      screenSize.height - appBarHeight - statusBarHeight - searchBarHeight - 200, // Bottom
+    );
+    
+    // Show popup menu with filter options
+    showMenu<FilterType>(
+      context: context,
+      position: position,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      items: [
+        PopupMenuItem<FilterType>(
+          value: FilterType.all,
+          child: Row(
+            children: [
+              Icon(
+                _currentFilterType == FilterType.all
+                    ? Icons.check
+                    : Icons.radio_button_unchecked,
+                color: _currentFilterType == FilterType.all
+                    ? Colors.deepPurple
+                    : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              const Text('All Items'),
+            ],
+          ),
+        ),
+        PopupMenuItem<FilterType>(
+          value: FilterType.late,
+          child: Row(
+            children: [
+              Icon(
+                _currentFilterType == FilterType.late
+                    ? Icons.check
+                    : Icons.radio_button_unchecked,
+                color: _currentFilterType == FilterType.late
+                    ? Colors.deepPurple
+                    : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              const Text('Filter by Late'),
+            ],
+          ),
+        ),
+        PopupMenuItem<FilterType>(
+          value: FilterType.onTime,
+          child: Row(
+            children: [
+              Icon(
+                _currentFilterType == FilterType.onTime
+                    ? Icons.check
+                    : Icons.radio_button_unchecked,
+                color: _currentFilterType == FilterType.onTime
+                    ? Colors.deepPurple
+                    : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              const Text('Filter by On-Time'),
+            ],
+          ),
+        ),
+        PopupMenuItem<FilterType>(
+          value: FilterType.notScanned,
+          child: Row(
+            children: [
+              Icon(
+                _currentFilterType == FilterType.notScanned
+                    ? Icons.check
+                    : Icons.radio_button_unchecked,
+                color: _currentFilterType == FilterType.notScanned
+                    ? Colors.deepPurple
+                    : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              const Text('Filter by Not Scanned'),
+            ],
+          ),
+        ),
+      ],
+    ).then((selectedFilter) {
+      if (selectedFilter != null && selectedFilter != _currentFilterType) {
+        setState(() {
+          _currentFilterType = selectedFilter;
+        });
+        _applyFilters();
+      }
+    });
+  }
+
   void _handleMoreOptions() {
     // Calculate position - show menu below the app bar, aligned to the right
     final Size screenSize = MediaQuery.of(context).size;
@@ -444,14 +583,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
         children: [
           SearchBarWidget(
             controller: _searchController,
-            onFilterTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Filter options will be implemented here'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+            onFilterTap: _handleFilterTap,
           ),
           Expanded(
             child: _isLoading
@@ -477,7 +609,6 @@ class _TrackingScreenState extends State<TrackingScreen> {
                           return TrackingCard(
                             item: item,
                             onViewDetailsTap: () => _handleViewDetails(item),
-                            onQrCodeTap: _handleQrCodeScan,
                           );
                         },
                       ),
