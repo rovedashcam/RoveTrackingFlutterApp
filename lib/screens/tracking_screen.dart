@@ -119,14 +119,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
     setState(() {
       _allTrackingItems = sortedList;
       // Update filtered list based on current search
-      final query = _searchController.text.toLowerCase();
+      final query = _searchController.text.toLowerCase().trim();
       if (query.isEmpty) {
         _filteredTrackingItems = List<TrackingItem>.from(_allTrackingItems);
       } else {
         _filteredTrackingItems = _allTrackingItems.where((item) {
+          // Search by tracking number, order ID, or product name
           return item.trackingNumber.toLowerCase().contains(query) ||
               item.orderId.toLowerCase().contains(query) ||
-              item.sku.toLowerCase().contains(query);
+              item.productName.toLowerCase().contains(query);
         }).toList();
       }
     });
@@ -141,9 +142,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
         _filteredTrackingItems = List<TrackingItem>.from(_allTrackingItems);
       } else {
         _filteredTrackingItems = _allTrackingItems.where((item) {
+          // Search by tracking number, order ID, or product name
           return item.trackingNumber.toLowerCase().contains(query) ||
               item.orderId.toLowerCase().contains(query) ||
-              item.sku.toLowerCase().contains(query);
+              item.productName.toLowerCase().contains(query);
         }).toList();
       }
     });

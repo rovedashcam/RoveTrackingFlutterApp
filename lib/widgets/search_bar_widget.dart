@@ -8,7 +8,7 @@ class SearchBarWidget extends StatelessWidget {
 
   const SearchBarWidget({
     super.key,
-    this.hintText = 'Search by tracking number, order ID, customer name, or product name',
+    this.hintText = 'Search by tracking number, order ID, or product name',
     this.controller,
     this.onChanged,
     this.onFilterTap,

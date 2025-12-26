@@ -7,6 +7,7 @@ class TrackingItem {
   final String shipmentDate;
   final String carrier;
   final String shippedStatus;
+  final String productName;
 
   TrackingItem({
     required this.trackingNumber,
@@ -17,6 +18,7 @@ class TrackingItem {
     required this.shipmentDate,
     required this.carrier,
     required this.shippedStatus,
+    this.productName = '',
   });
 }
 

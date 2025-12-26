@@ -138,6 +138,7 @@ class AmazonShipmentEntity implements DisplayableItem {
       shipmentDate: DateFormatter.formatDate(shipmentDate),
       carrier: carrier,
       shippedStatus: status.isNotEmpty ? status : 'not scanned',
+      productName: productName,
     );
   }
 }
