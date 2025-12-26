@@ -4,12 +4,14 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onBrowseTap;
   final VoidCallback? onQrCodeTap;
   final VoidCallback? onMoreTap;
+  final VoidCallback? onDeleteTap;
 
   const AppHeader({
     super.key,
     this.onBrowseTap,
     this.onQrCodeTap,
     this.onMoreTap,
+    this.onDeleteTap,
   });
 
   @override
@@ -36,6 +38,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
           icon: const Icon(Icons.qr_code_scanner),
           tooltip: 'Scan Barcode',
           onPressed: onQrCodeTap,
+        ),
+        // Delete All Icon
+        IconButton(
+          icon: const Icon(Icons.delete_outline),
+          tooltip: 'Delete All Data',
+          onPressed: onDeleteTap,
         ),
         // More Options Icon
         IconButton(

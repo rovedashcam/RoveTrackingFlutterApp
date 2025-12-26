@@ -124,5 +124,24 @@ class FirestoreService {
       throw Exception('Failed to update shipment status: $e');
     }
   }
+
+  /// Delete all shipments from Firestore
+  Future<void> deleteAllShipments() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_collectionName)
+          .get();
+
+      // Delete all documents in batches
+      final batch = _firestore.batch();
+      for (var doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to delete all shipments: $e');
+    }
+  }
 }
 

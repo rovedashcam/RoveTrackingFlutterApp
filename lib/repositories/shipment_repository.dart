@@ -91,6 +91,11 @@ class ShipmentRepository {
     await _firestoreService.deleteShipment(trackingNumber);
   }
 
+  /// Delete all shipments from Firestore
+  Future<void> deleteAllShipments() async {
+    await _firestoreService.deleteAllShipments();
+  }
+
   /// Update shipment status by scanning tracking number
   /// Calculates status based on shipment date and updates in Firestore
   Future<StatusUpdateResult> updateStatusByTrackingNumber(

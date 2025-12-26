@@ -465,6 +465,122 @@ class _TrackingScreenState extends State<TrackingScreen> {
     });
   }
 
+  /// Handle delete all button tap - show confirmation dialog
+  void _handleDeleteAll() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Delete All Data',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+          content: const Text(
+            'Do you want to clear all data? It will delete all data permanently.',
+            style: TextStyle(fontSize: 16),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          actions: [
+            // No button
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text(
+                'No',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            // Yes button
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog first
+                await _performDeleteAll();
+              },
+              child: const Text(
+                'Yes',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Perform delete all operation
+  Future<void> _performDeleteAll() async {
+    // Show loading dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    try {
+      // Delete all shipments from Firestore
+      await _repository.deleteAllShipments();
+
+      // Immediately clear the UI lists
+      if (mounted) {
+        setState(() {
+          _allTrackingItems = [];
+          _filteredTrackingItems = [];
+        });
+      }
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All data deleted successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // The stream will also update automatically when Firestore changes
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting data: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   void _handleMoreOptions() {
     // Calculate position - show menu below the app bar, aligned to the right
     final Size screenSize = MediaQuery.of(context).size;
@@ -577,6 +693,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
       appBar: AppHeader(
         onBrowseTap: _handleBrowseFile,
         onQrCodeTap: _handleQrCodeScan,
+        onDeleteTap: _handleDeleteAll,
         onMoreTap: _handleMoreOptions,
       ),
       body: Column(
