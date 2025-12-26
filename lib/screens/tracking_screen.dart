@@ -7,6 +7,13 @@ import 'scanner_screen.dart';
 import '../widgets/app_header.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/tracking_card.dart';
+import '../utils/date_formatter.dart';
+
+/// Sort type enum
+enum SortType {
+  requestDate,
+  shipmentDate,
+}
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -22,6 +29,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   List<TrackingItem> _allTrackingItems = [];
   List<TrackingItem> _filteredTrackingItems = [];
   bool _isLoading = true;
+  SortType _currentSortType = SortType.shipmentDate; // Default to shipment date
 
   @override
   void initState() {
@@ -42,13 +50,18 @@ class _TrackingScreenState extends State<TrackingScreen> {
     _repository.getShipmentsStream().listen(
       (shipments) {
         if (mounted) {
+          // Convert to TrackingItems
+          final trackingItems = shipments
+              .map((shipment) => shipment.toTrackingItem())
+              .toList();
+          
           setState(() {
-            _allTrackingItems = shipments
-                .map((shipment) => shipment.toTrackingItem())
-                .toList();
-            _onSearchChanged(); // Re-filter after new data
+            _allTrackingItems = trackingItems;
             _isLoading = false;
           });
+          
+          // Apply sorting after state update
+          _applySorting();
         }
       },
       onError: (error) {
@@ -67,11 +80,65 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
+  /// Apply sorting to the list based on current sort type
+  void _applySorting() {
+    if (!mounted || _allTrackingItems.isEmpty) return;
+    
+    // Create a new sorted list
+    final sortedList = List<TrackingItem>.from(_allTrackingItems);
+    
+    sortedList.sort((a, b) {
+      DateTime? dateA;
+      DateTime? dateB;
+      String dateStringA;
+      String dateStringB;
+      
+      if (_currentSortType == SortType.requestDate) {
+        dateStringA = a.requestDate;
+        dateStringB = b.requestDate;
+      } else {
+        // Sort by shipment date (default)
+        dateStringA = a.shipmentDate;
+        dateStringB = b.shipmentDate;
+      }
+      
+      // Parse dates
+      dateA = DateFormatter.parseDate(dateStringA);
+      dateB = DateFormatter.parseDate(dateStringB);
+      
+      // Handle null dates - put them at the end
+      if (dateA == null && dateB == null) return 0;
+      if (dateA == null) return 1; // null dates go to end
+      if (dateB == null) return -1; // null dates go to end
+      
+      // Sort in descending order (newest first)
+      return dateB.compareTo(dateA);
+    });
+    
+    // Update both lists in a single setState
+    setState(() {
+      _allTrackingItems = sortedList;
+      // Update filtered list based on current search
+      final query = _searchController.text.toLowerCase();
+      if (query.isEmpty) {
+        _filteredTrackingItems = List<TrackingItem>.from(_allTrackingItems);
+      } else {
+        _filteredTrackingItems = _allTrackingItems.where((item) {
+          return item.trackingNumber.toLowerCase().contains(query) ||
+              item.orderId.toLowerCase().contains(query) ||
+              item.sku.toLowerCase().contains(query);
+        }).toList();
+      }
+    });
+  }
+
   void _onSearchChanged() {
+    if (!mounted) return;
     final query = _searchController.text.toLowerCase();
     setState(() {
       if (query.isEmpty) {
-        _filteredTrackingItems = _allTrackingItems;
+        // Create a new list copy to ensure UI updates
+        _filteredTrackingItems = List<TrackingItem>.from(_allTrackingItems);
       } else {
         _filteredTrackingItems = _allTrackingItems.where((item) {
           return item.trackingNumber.toLowerCase().contains(query) ||
@@ -258,12 +325,72 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 
   void _handleMoreOptions() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('More options menu will be implemented here'),
-        duration: Duration(seconds: 2),
-      ),
+    // Calculate position - show menu below the app bar, aligned to the right
+    final Size screenSize = MediaQuery.of(context).size;
+    final double appBarHeight = kToolbarHeight;
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double menuWidth = 220.0;
+    
+    final RelativeRect position = RelativeRect.fromLTRB(
+      screenSize.width - menuWidth - 8, // Left: screen width - menu width - margin
+      appBarHeight + statusBarHeight, // Top: below app bar
+      8, // Right margin
+      screenSize.height - appBarHeight - statusBarHeight - 100, // Bottom
     );
+    
+    // Show popup menu with sort options
+    showMenu<SortType>(
+      context: context,
+      position: position,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      items: [
+        PopupMenuItem<SortType>(
+          value: SortType.requestDate,
+          child: Row(
+            children: [
+              Icon(
+                _currentSortType == SortType.requestDate
+                    ? Icons.check
+                    : Icons.radio_button_unchecked,
+                color: _currentSortType == SortType.requestDate
+                    ? Colors.deepPurple
+                    : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              const Text('Sort by Request Date'),
+            ],
+          ),
+        ),
+        PopupMenuItem<SortType>(
+          value: SortType.shipmentDate,
+          child: Row(
+            children: [
+              Icon(
+                _currentSortType == SortType.shipmentDate
+                    ? Icons.check
+                    : Icons.radio_button_unchecked,
+                color: _currentSortType == SortType.shipmentDate
+                    ? Colors.deepPurple
+                    : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              const Text('Sort by Shipment Date'),
+            ],
+          ),
+        ),
+      ],
+    ).then((selectedSort) {
+      if (selectedSort != null && selectedSort != _currentSortType) {
+        setState(() {
+          _currentSortType = selectedSort;
+        });
+        _applySorting();
+      }
+    });
   }
 
   void _handleViewDetails(TrackingItem item) {
@@ -340,6 +467,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         ),
                       )
                     : ListView.builder(
+                        key: ValueKey('${_currentSortType}_${_filteredTrackingItems.length}'), // Force rebuild on sort change
                         padding: const EdgeInsets.only(bottom: 16.0),
                         itemCount: _filteredTrackingItems.length,
                         itemBuilder: (context, index) {

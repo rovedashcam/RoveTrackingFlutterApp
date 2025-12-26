@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:intl/intl.dart';
+import 'date_formatter.dart';
 
 /// Status Calculator Utility
 /// Calculates shipment status based on shipment date and current date
@@ -12,12 +11,10 @@ class StatusCalculator {
       return 'not scanned';
     }
 
-    DateTime shipment;
-
-    try {
-      // Handle format like: 05-Oct-2025
-      shipment = DateFormat('dd-MMM-yyyy').parseStrict(shipmentDate);
-    } catch (_) {
+    // Parse the shipment date using DateFormatter which handles multiple formats
+    final shipment = DateFormatter.parseDate(shipmentDate);
+    
+    if (shipment == null) {
       return 'not scanned';
     }
 
@@ -29,6 +26,7 @@ class StatusCalculator {
       shipment.day,
     );
 
+    // Calculate difference in days (positive = past date, negative = future date)
     final differenceInDays = todayDateOnly.difference(shipmentDateOnly).inDays;
 
     if (differenceInDays <= 15) {

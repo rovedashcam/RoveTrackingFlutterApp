@@ -1,10 +1,10 @@
 import 'package:intl/intl.dart';
 
 /// Date Formatter Utility
-/// Converts dates to DD-MM-YYYY HH:MM format (24-hour)
+/// Converts dates to DD-MMM-YYYY format (e.g., 05-Oct-2025)
 class DateFormatter {
-  /// Format date string to DD-MM-YYYY HH:MM format
-  /// Handles various input formats and converts to 24-hour time format
+  /// Format date string to DD-MMM-YYYY format (e.g., 05-Oct-2025)
+  /// Handles various input formats and converts to DD-MMM-YYYY format
   static String formatDate(String dateString) {
     if (dateString.isEmpty) return '';
     
@@ -59,18 +59,20 @@ class DateFormatter {
         }
       }
       
-      // Format 3: "DD-MM-YYYY HH:MM" or "DD/MM/YYYY HH:MM"
+      // Format 3: Try parsing with common date formats including DD-MMM-YYYY
       if (dateTime == null) {
         try {
-          // Try common date formats
+          // Try common date formats including the new DD-MMM-YYYY format
           final formats = [
+            'dd-MMM-yyyy', // New format: 05-Oct-2025
             'dd-MM-yyyy HH:mm',
+            'dd-MM-yyyy',
             'dd/MM/yyyy HH:mm',
+            'dd/MM/yyyy',
             'yyyy-MM-dd HH:mm',
             'yyyy/MM/dd HH:mm',
             'MM/dd/yyyy HH:mm',
-            'dd-MM-yyyy',
-            'dd/MM/yyyy',
+            'MM/dd/yyyy',
             'yyyy-MM-dd',
           ];
           
@@ -87,9 +89,9 @@ class DateFormatter {
         }
       }
       
-      // If we successfully parsed the date, format it
+      // If we successfully parsed the date, format it as DD-MMM-YYYY (e.g., 05-Oct-2025)
       if (dateTime != null) {
-        return DateFormat('dd-MM-yyyy HH:mm').format(dateTime);
+        return DateFormat('dd-MMM-yyyy').format(dateTime);
       }
       
       // If parsing failed, return original string
@@ -100,9 +102,9 @@ class DateFormatter {
     }
   }
   
-  /// Format DateTime object to DD-MM-YYYY HH:MM format
+  /// Format DateTime object to DD-MMM-YYYY format (e.g., 05-Oct-2025)
   static String formatDateTime(DateTime dateTime) {
-    return DateFormat('dd-MM-yyyy HH:mm').format(dateTime);
+    return DateFormat('dd-MMM-yyyy').format(dateTime);
   }
   
   /// Parse date string and return DateTime, or null if parsing fails
@@ -154,15 +156,16 @@ class DateFormatter {
         }
       }
       
-      // Try common formats
+      // Try common formats including the new DD-MMM-YYYY format
       final formats = [
+        'dd-MMM-yyyy', // New format: 05-Oct-2025
         'dd-MM-yyyy HH:mm',
-        'dd/MM/yyyy HH:mm',
-        'MM/dd/yyyy HH:mm',
-        'yyyy-MM-dd HH:mm',
         'dd-MM-yyyy',
+        'dd/MM/yyyy HH:mm',
         'dd/MM/yyyy',
+        'MM/dd/yyyy HH:mm',
         'MM/dd/yyyy',
+        'yyyy-MM-dd HH:mm',
         'yyyy-MM-dd',
       ];
       
