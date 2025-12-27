@@ -1,35 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'dart:io' show Platform;
 import 'screens/tracking_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // Initialize Firebase
-    // For web, Firebase will use default options if not provided
-    // For mobile, it will use google-services.json / GoogleService-Info.plist
-    if (kIsWeb) {
-      // Web platform - Firebase will auto-detect config from environment
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: "AIzaSyCW7EP0EC_7g1qIHs8tV8gPKZKqM0RCi3I",
-          appId: "1:719454456615:web:default",
-          messagingSenderId: "719454456615",
-          projectId: "rovereturntrackingapp",
-          storageBucket: "rovereturntrackingapp.firebasestorage.app",
-        ),
-      );
-    } else {
-      // Mobile platforms - use default initialization
-      await Firebase.initializeApp();
+    // Check if Firebase is already initialized
+    if (Firebase.apps.isEmpty) {
+      // Initialize Firebase
+      if (kIsWeb) {
+        // Web platform - Firebase will auto-detect config from environment
+        await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: "AIzaSyCW7EP0EC_7g1qIHs8tV8gPKZKqM0RCi3I",
+            appId: "1:719454456615:web:default",
+            messagingSenderId: "719454456615",
+            projectId: "rovereturntrackingapp",
+            storageBucket: "rovereturntrackingapp.firebasestorage.app",
+          ),
+        );
+      } else if (Platform.isIOS) {
+        // iOS platform - use default initialization (uses GoogleService-Info.plist)
+        // If plist file is missing, Firebase will throw an error which we catch below
+        await Firebase.initializeApp();
+      } else {
+        // Android platform - use default initialization (uses google-services.json)
+        await Firebase.initializeApp();
+      }
     }
   } catch (e) {
-    // If Firebase is already initialized, that's okay
+    // Log the error - Firebase is required for the app to work properly
     if (kDebugMode) {
-      print('Firebase initialization note: $e');
+      print('Firebase initialization error: $e');
     }
+    // Don't rethrow - allow app to run but Firebase features won't work
+    // This prevents app crash but user will see Firebase errors in UI
   }
   
   runApp(const TrackingApp());

@@ -1,6 +1,6 @@
 {
-    "name": "RoveTrakingFlutterApp",
-    "short_name": "RoveTrakingFlutterApp",
+    "name": "RoveTrakingApp",
+    "short_name": "RoveTrakingApp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
