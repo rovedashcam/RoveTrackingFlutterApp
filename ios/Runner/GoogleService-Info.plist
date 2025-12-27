@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyB9e0FDUmv6zM4Vxy2uR_8TXSFGKfHgENg</string>
+	<string>AIzaSyCLqsrzciq_DBLRX_YcDwGe8FDY3lHijwc</string>
 	<key>GCM_SENDER_ID</key>
-	<string>865316674044</string>
+	<string>719454456615</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.ios.rove.trackingapp</string>
 	<key>PROJECT_ID</key>
-	<string>rovetrakingiosapp</string>
+	<string>rovereturntrackingapp</string>
 	<key>STORAGE_BUCKET</key>
-	<string>rovetrakingiosapp.firebasestorage.app</string>
+	<string>rovereturntrackingapp.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:865316674044:ios:d0d35f843262236342fa79</string>
+	<string>1:719454456615:ios:573f21b7661e75a0043702</string>
 </dict>
 </plist>

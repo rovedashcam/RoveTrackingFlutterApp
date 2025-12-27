@@ -24,7 +24,7 @@ void main() async {
         );
       } else if (Platform.isIOS) {
         // iOS platform - use default initialization (uses GoogleService-Info.plist)
-        // If plist file is missing, Firebase will throw an error which we catch below
+        // The plist file now matches the Android project configuration
         await Firebase.initializeApp();
       } else {
         // Android platform - use default initialization (uses google-services.json)
